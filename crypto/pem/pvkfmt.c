@@ -708,12 +708,14 @@ static EVP_PKEY *do_PVK_body(const unsigned char **in,
         }
         inlen = keylen - 8;
         q = enctmp + 8;
-        if (!EVP_DecryptInit_ex(cctx, EVP_rc4(), NULL, keybuf, NULL))
-            goto err;
-        if (!EVP_DecryptUpdate(cctx, q, &enctmplen, p, inlen))
-            goto err;
-        if (!EVP_DecryptFinal_ex(cctx, q + enctmplen, &enctmplen))
-            goto err;
+        if(cctx){
+            if (!EVP_DecryptInit_ex(cctx, EVP_rc4(), NULL, keybuf, NULL))
+                goto err;
+            if (!EVP_DecryptUpdate(cctx, q, &enctmplen, p, inlen))
+                goto err;
+            if (!EVP_DecryptFinal_ex(cctx, q + enctmplen, &enctmplen))
+                goto err;
+        }
         magic = read_ledword((const unsigned char **)&q);
         if (magic != MS_RSA2MAGIC && magic != MS_DSS2MAGIC) {
             q = enctmp + 8;
