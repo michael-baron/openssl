@@ -708,7 +708,16 @@ static EVP_PKEY *do_PVK_body(const unsigned char **in,
         }
         inlen = keylen - 8;
         q = enctmp + 8;
-        if(cctx){
+        if (!EVP_DecryptInit_ex(cctx, EVP_rc4(), NULL, keybuf, NULL))
+            goto err;
+        if (!EVP_DecryptUpdate(cctx, q, &enctmplen, p, inlen))
+            goto err;
+        if (!EVP_DecryptFinal_ex(cctx, q + enctmplen, &enctmplen))
+            goto err;
+        magic = read_ledword((const unsigned char **)&q);
+        if (magic != MS_RSA2MAGIC && magic != MS_DSS2MAGIC) {
+            q = enctmp + 8;
+            memset(keybuf + 5, 0, 11);
             if (!EVP_DecryptInit_ex(cctx, EVP_rc4(), NULL, keybuf, NULL))
                 goto err;
             if (!EVP_DecryptUpdate(cctx, q, &enctmplen, p, inlen))
@@ -717,22 +726,11 @@ static EVP_PKEY *do_PVK_body(const unsigned char **in,
                 goto err;
             magic = read_ledword((const unsigned char **)&q);
             if (magic != MS_RSA2MAGIC && magic != MS_DSS2MAGIC) {
-                q = enctmp + 8;
-                memset(keybuf + 5, 0, 11);
-                if (!EVP_DecryptInit_ex(cctx, EVP_rc4(), NULL, keybuf, NULL))
-                    goto err;
-                if (!EVP_DecryptUpdate(cctx, q, &enctmplen, p, inlen))
-                    goto err;
-                if (!EVP_DecryptFinal_ex(cctx, q + enctmplen, &enctmplen))
-                    goto err;
-                magic = read_ledword((const unsigned char **)&q);
-                if (magic != MS_RSA2MAGIC && magic != MS_DSS2MAGIC) {
-                    PEMerr(PEM_F_DO_PVK_BODY, PEM_R_BAD_DECRYPT);
-                    goto err;
-                }
+                PEMerr(PEM_F_DO_PVK_BODY, PEM_R_BAD_DECRYPT);
+                goto err;
             }
-            p = enctmp;
         }
+        p = enctmp;
     }
 
     ret = b2i_PrivateKey(&p, keylen);
