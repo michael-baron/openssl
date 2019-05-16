@@ -679,7 +679,7 @@ static EVP_PKEY *do_PVK_body(const unsigned char **in,
     unsigned char keybuf[20];
 
     EVP_CIPHER_CTX *cctx = EVP_CIPHER_CTX_new();
-    if (saltlen) {
+    if (saltlen && cctx) {
         char psbuf[PEM_BUFSIZE];
         int enctmplen, inlen;
         if (cb)
